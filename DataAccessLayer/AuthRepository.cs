@@ -1,4 +1,5 @@
 ﻿using CoreMVCproject.Models;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System;
 using System.Collections.Generic;
@@ -134,29 +135,30 @@ public class AuthRepository
         }
     }
 
-    // Method to get a user by username and password
-    public User GetUserByUsernameAndPassword(string username, string password)
+
+
+
+    public bool ValidateUser(User user)
     {
-        using (var connection = new SqlConnection(_connectionString))
+        try
         {
-            connection.Open();
-            var command = new SqlCommand( "SELECT Id, Username, Email, RoleId FROM Users WHERE Username = @Username AND PasswordHash = @PasswordHash", connection);
-            command.Parameters.AddWithValue("@Username", username);
-            command.Parameters.AddWithValue("@PasswordHash", password);
-            using (var reader = command.ExecuteReader())
+            using (var connection = new SqlConnection(_connectionString))
             {
-                if (reader.Read())
-                {
-                    return new User
-                    {
-                        Id = reader.GetInt32(0),
-                        Username = reader.GetString(1),
-                        Email = reader.GetString(2),
-                        RoleId = reader.GetInt32(3)
-                    };
-                }
+                connection.Open();
+                // Query to check if the user exists with the provided username and password
+                var checkUser = new SqlCommand("SELECT COUNT(*) FROM Users WHERE Username = @Username AND PasswordHash = @PasswordHash", connection);
+                checkUser.Parameters.Add(new SqlParameter("@Username", SqlDbType.NVarChar) { Value = user.Username });
+                checkUser.Parameters.Add(new SqlParameter("@PasswordHash", SqlDbType.NVarChar) { Value = user.PasswordHash });
+
+                int userExists = (int)checkUser.ExecuteScalar();
+                return userExists > 0; // Return true if user exists, otherwise false
             }
         }
-        return null;
+        catch (Exception ex)
+        {
+            // Log the exception (e.g., using a logging framework)
+            // For now, rethrow the exception
+            throw new ApplicationException("An error occurred while validating the user.", ex);
+        }
     }
 }

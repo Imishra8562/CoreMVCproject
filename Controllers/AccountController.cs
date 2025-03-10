@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.Data.SqlClient;
+using System.Data;
 using System.Security.Claims;
 
 namespace CoreMVCproject.Controllers
@@ -113,7 +115,7 @@ namespace CoreMVCproject.Controllers
             return View(user);
         }
 
-      
+
         [HttpGet]
         public IActionResult Login()
         {
@@ -122,45 +124,25 @@ namespace CoreMVCproject.Controllers
         [HttpPost]
         public IActionResult Login(User user)
         {
-            if (ModelState.IsValid)
+            // Manually validate the required fields
+            if (string.IsNullOrEmpty(user.Username) || string.IsNullOrEmpty(user.PasswordHash))
             {
-                // Check if the user exists in the database
-                var dbUser = _authRepository.GetUserByUsernameAndPassword(user.Username, user.PasswordHash);
-
-                if (dbUser != null)
-                {
-                    // Redirect to the home page or dashboard
-                    return RedirectToAction("Index", "Home");
-                }
+                ModelState.AddModelError("", "Username and password are required.");
+                return View();
             }
 
-            // If the model state is invalid or login fails, return to the login view
-            return View(user);
+            bool isValidUser = _authRepository.ValidateUser(user);
+            if (isValidUser)
+            {
+                return RedirectToAction("Index", "Home"); // Redirect to home page after successful login
+            }
+            else
+            {
+                ModelState.AddModelError("", "Invalid username or password."); // Add error message
+                return View(); // Return to the login view with error
+            }
         }
+
     }
+
 }
-//// User exists
-//// Create a new ClaimsIdentity
-//var claims = new List<Claim>
-//            {
-//                new Claim(ClaimTypes.Name, dbUser.Username),
-//                new Claim(ClaimTypes.Email, dbUser.Email),
-//                new Claim(ClaimTypes.Role, dbUser.Roles[0].Name) // Assuming the user has at least one role
-//            };
-
-//var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-
-//// Create a new ClaimsPrincipal
-//var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
-
-//// Sign in the user
-//await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, claimsPrincipal);
-
-//// Redirect to the home page or dashboard
-//return RedirectToAction("Index", "Home");
-//                }
-//                else
-//{
-//    // User does not exist
-//    ModelState.AddModelError("", "Invalid username or password.");
-//}
